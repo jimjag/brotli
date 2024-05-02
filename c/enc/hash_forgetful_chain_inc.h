@@ -208,11 +208,13 @@ static BROTLI_INLINE void FN(FindLongestMatch)(
   score_t best_score = out->score;
   size_t best_len = out->len;
   size_t i;
-  BROTLI_DCHECK(cur_ix_masked + max_length <= ring_buffer_mask);
   const size_t key = FN(HashBytes)(&data[cur_ix_masked]);
   const uint8_t tiny_hash = (uint8_t)(key);
   out->len = 0;
   out->len_code_delta = 0;
+
+  BROTLI_DCHECK(cur_ix_masked + max_length <= ring_buffer_mask);
+
   /* Try last distance first. */
   for (i = 0; i < NUM_LAST_DISTANCES_TO_CHECK; ++i) {
     const size_t backward = (size_t)distance_cache[i];
@@ -261,7 +263,8 @@ static BROTLI_INLINE void FN(FindLongestMatch)(
       prev_ix = (cur_ix - backward) & ring_buffer_mask;
       slot = banks[bank].slots[last].next;
       delta = banks[bank].slots[last].delta;
-      if (prev_ix + best_len > ring_buffer_mask ||
+      if (cur_ix_masked + best_len > ring_buffer_mask ||
+          prev_ix + best_len > ring_buffer_mask ||
           /* compare 4 bytes ending at best_len + 1 */
           BrotliUnalignedRead32(&data[cur_ix_masked + best_len - 3]) !=
               BrotliUnalignedRead32(&data[prev_ix + best_len - 3])) {
