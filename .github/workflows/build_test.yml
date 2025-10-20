@@ -6,12 +6,16 @@
 # Workflow for building and running tests under Ubuntu
 
 name: Build/Test
+
 on:
   push:
     branches:
       - master
   pull_request:
-    types: [opened, reopened, labeled, synchronize]
+    types: [opened, reopened, labeled, unlabeled, synchronize]
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
@@ -192,6 +196,12 @@ jobs:
       CXX: ${{ matrix.cxx_compiler || 'gcc' }}
 
     steps:
+
+    - name: Harden Runner
+      uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
+      with:
+        egress-policy: audit
+
     - name: Install extra deps @ Ubuntu
       if: ${{ runner.os == 'Linux' }}
       # Already installed: bazel, clang{13-15}, cmake, gcc{9.5-13.1}, java{8,11,17,21}, maven, python{3.10}
@@ -201,7 +211,7 @@ jobs:
         sudo apt install -y ${EXTRA_PACKAGES}
 
     - name: Checkout the source
-      uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       with:
         submodules: false
         fetch-depth: 1
@@ -305,11 +315,13 @@ jobs:
       with:
         python-version: ${{ matrix.python_version }}
 
+     # TODO(eustas): use modern setuptools (split out testing)
     - name: Build / Test with Python
       if: ${{ matrix.build_system == 'python' }}
       run: |
         python -VV
         python -c "import sys; sys.exit('Invalid python version') if '.'.join(map(str,sys.version_info[0:2])) != '${{ matrix.python_version }}' else True"
+        pip install setuptools==51.3.3
         python setup.py ${{ matrix.py_setuptools_cmd || 'test'}}
 
   build_test_py27:
@@ -318,6 +330,11 @@ jobs:
     container:
       image: ubuntu:22.04
     steps:
+
+    - name: Harden Runner
+      uses: step-security/harden-runner@f4a75cfd619ee5ce8d5b864b0d183aff3c69b55a # v2.13.1
+      with:
+        egress-policy: audit
 
     - name: Install deps
       run: |
@@ -328,7 +345,7 @@ jobs:
         python2.7 -m pip install distutils-pytest==0.1
 
     - name: Checkout the source
-      uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4.0.0
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       with:
         submodules: false
         fetch-depth: 1
